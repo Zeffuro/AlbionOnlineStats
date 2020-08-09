@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <title>Zeffuro's Albion KDA Stats</title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.4.1/jquery.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.js"></script>
+        <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/js/bootstrap.bundle.min.js"></script>  
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.24.0/moment.min.js"></script>
+        <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.4.1/css/bootstrap.min.css" rel="stylesheet">
+        <link href="https://stackpath.bootstrapcdn.com/bootswatch/4.4.1/slate/bootstrap.min.css" rel="stylesheet">
+        <style>
+            .item {
+                display: inline-block;
+                margin-bottom: -5px;
+                margin-right: -5px;
+            }
+            .item-count {
+                position: absolute;
+                margin: 65px -30px;
+                font-size: 12px;
+                text-align: center;
+                color: white;                
+            }
+        </style>
+        <script>
+            let players = [
+                {
+                    Name: "Zeffuro",
+                    ID: "LCi1OOxCTJm6EjPiKbOgIg"
+                },
+                {
+                    Name: "Yaloshi",
+                    ID: "YveBdjxaT16TZ55ODOTaTw"
+                },
+                {
+                    Name: "Lunexz",
+                    ID: "ZLJgzpYETgmcFRgvAfst5g"
+                }
+            ];
+
+            let playerEvents = {};
+
+            // Image https://render.albiononline.com/v1/item/T5_CAPEITEM_UNDEAD@1.png?count=1&quality=1
+
+            for (let player of players) {
+                playerEvents[player.Name] = {};
+                // Get Kills
+                $.getJSON(`https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/kills`, function(data){
+                    playerEvents[player.Name].kills = data;
+                    handleEvents(player.Name, "kills");
+                });
+                // Get Deaths
+                $.getJSON(`https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/deaths`, function(data){
+                    playerEvents[player.Name].deaths = data;
+                    handleEvents(player.Name, "deaths");
+                });
+            }
+
+            function handleEvents(playerName, type){
+                for (let event of playerEvents[playerName][type]) {
+                    let killerequip = $(`<div id="${event.EventId}-killer-equipment"></div>`);
+                    let victimequip = $(`<div id="${event.EventId}-victim-equipment"></div>`);
+                    let inventory = $(`<div id="${event.EventId}-inventory"></div>`);                    
+                    for (let item of event.Victim.Inventory) {
+                        if(item != null){
+                            let div = $(`<div class="item"></div>`);
+                            let image = $("<img></img>")
+                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
+                            .attr("width", "100px").attr("height", "100px");
+                            let span = $(`<span class="item-count">${item.Count}</span>`);
+                            div.append(image);
+                            div.append(span);
+                            inventory.append(div);
+                        }                        
+                    }
+
+                    for (let item of Object.values(event.Killer.Equipment)) {
+                        if(item != null){
+                            let div = $(`<div class="item"></div>`);
+                            let image = $("<img></img>")
+                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
+                            .attr("width", "100px").attr("height", "100px");
+                            let span = $(`<span class="item-count">${item.Count}</span>`);
+                            div.append(image);
+                            div.append(span);
+                            killerequip.append(div);
+                        }                        
+                    }
+
+                    for (let item of Object.values(event.Victim.Equipment)) {
+                        if(item != null){
+                            let div = $(`<div class="item"></div>`);
+                            let image = $("<img></img>")
+                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
+                            .attr("width", "100px").attr("height", "100px");
+                            let span = $(`<span class="item-count">${item.Count}</span>`);
+                            div.append(image);
+                            div.append(span);
+                            victimequip.append(div);
+                        }                        
+                    }
+
+                    $(`#${playerName}-${type}`).append(`
+                        <li class="list-group-item">
+                            ${event.Killer.Name} (<span style="color: red;">${Math.floor(parseFloat(event.Killer.AverageItemPower))}</span>) vs ${event.Victim.Name} (<span style="color: red;">${Math.floor(parseFloat(event.Victim.AverageItemPower))}</span>)
+                            <a class="float-right" data-toggle="collapse" href="#collapse-${event.EventId}" role="button" aria-expanded="false" aria-controls="collapse-${event.EventId}">
+                                <u>Expand</u>
+                            </a>
+                            <br />
+                            <a href="https://albiononline.com/en/killboard/kill/${event.EventId}" target="_blank">
+                                <u>Killboard</u>
+                            </a>
+                            
+                            <br />
+                            <br />
+                            Fame: <span style="color: red;">${event.TotalVictimKillFame.toLocaleString()}</span>
+                            <span class="float-right">${moment(event.TimeStamp).format("DD-MM-YYYY HH:mm:ss")}</span>
+                        </li>
+                        <div class="collapse" id="collapse-${event.EventId}">
+                        </div>
+                    `);
+                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Killer Equipment <span style="color: red;">${Math.floor(parseFloat(event.Killer.AverageItemPower))}</span></h5></div>`));
+                    $(`#collapse-${event.EventId}`).append(killerequip);
+                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Victim Equipment <span style="color: red;">${Math.floor(parseFloat(event.Victim.AverageItemPower))}</span></h5></div>`));
+                    $(`#collapse-${event.EventId}`).append(victimequip);
+                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Inventory</h5></div>`));
+                    $(`#collapse-${event.EventId}`).append(inventory);
+                }
+            }
+        </script>
+    </head>
+    <body>        
+        <div class="container-fluid">
+            <div class="page-header" id="banner">
+                <div class="row">
+                    <div class="col-lg-8 col-md-7 col-sm-6">
+                        <br />
+                        <br />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-lg-8 col-md-7 col-sm-6">
+                        <h1>Zeffuro's Albion KDA Stats</h1>
+                        <p class="lead">Just listing our kills and deaths...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-4">
+                    <div class="card text-white bg-primary mb-3">
+                        <div class="card-header">Zeffuro</div>
+                            <ul id="Zeffuro-kills" class="list-group list-group-flush">
+                                <div class="card-body">
+                                    <h4 class="card-text">Kills</h4>
+                                </div>
+                            </ul>
+                            <ul id="Zeffuro-deaths" class="list-group list-group-flush">
+                                <div class="card-body">
+                                    <h4 class="card-text">Deaths</h4>
+                                </div>
+                            </ul>
+                      </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card text-white bg-primary mb-3">
+                        <div class="card-header">Yaloshi</div>
+                        <ul id="Yaloshi-kills" class="list-group list-group-flush">
+                            <div class="card-body">
+                                <h4 class="card-text">Kills</h4>
+                            </div>
+                        </ul>
+                        <ul id="Yaloshi-deaths" class="list-group list-group-flush">
+                            <div class="card-body">
+                                <h4 class="card-text">Deaths</h4>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-4">
+                    <div class="card text-white bg-primary mb-3">
+                        <div class="card-header">Lunexz</div>
+                        <ul id="Lunexz-kills" class="list-group list-group-flush">
+                            <div class="card-body">
+                                <h4 class="card-text">Kills</h4>
+                            </div>
+                        </ul>
+                        <ul id="Lunexz-deaths" class="list-group list-group-flush">
+                            <div class="card-body">
+                                <h4 class="card-text">Deaths</h4>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>
