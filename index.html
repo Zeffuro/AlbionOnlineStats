@@ -46,12 +46,12 @@
             for (let player of players) {
                 playerEvents[player.Name] = {};
                 // Get Kills
-                $.getJSON(`https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/kills`, function(data){
+                $.getJSON(`https://thingproxy.freeboard.io/fetch/https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/kills`, function(data){
                     playerEvents[player.Name].kills = data;
                     handleEvents(player.Name, "kills");
                 });
                 // Get Deaths
-                $.getJSON(`https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/deaths`, function(data){
+                $.getJSON(`https://thingproxy.freeboard.io/fetch/https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/deaths`, function(data){
                     playerEvents[player.Name].deaths = data;
                     handleEvents(player.Name, "deaths");
                 });
