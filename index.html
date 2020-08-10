@@ -48,6 +48,11 @@
             let playerEvents = {};
             let debug = false;
             
+            $.ajaxSetup({
+                headers : {
+                    'X-Requested-With': 'XMLHttpRequest'
+                }
+            });
 
             // Image https://render.albiononline.com/v1/item/T5_CAPEITEM_UNDEAD@1.png?count=1&quality=1
 
