@@ -22,6 +22,12 @@
                 text-align: center;
                 color: white;                
             }
+            h5 {
+                padding-top: 20px;
+            }
+            .list-group-item {
+                padding-bottom: 20px;
+            }
         </style>
         <script>
             let players = [
@@ -40,92 +46,211 @@
             ];
 
             let playerEvents = {};
+            let debug = false;
+            
 
             // Image https://render.albiononline.com/v1/item/T5_CAPEITEM_UNDEAD@1.png?count=1&quality=1
 
             for (let player of players) {
                 playerEvents[player.Name] = {};
+                let killUrl = `https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/kills`;
+                let deathUrl = `https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/deaths`;
+
+                if(!debug){
+                    killUrl = `https://cors-anywhere.herokuapp.com/${killUrl}`;
+                    deathUrl = `https://cors-anywhere.herokuapp.com/${deathUrl}`;
+                }
+
                 // Get Kills
-                $.getJSON(`https://cors-anywhere.herokuapp.com/https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/kills`, function(data){
+                $.getJSON(killUrl, function(data){
                     playerEvents[player.Name].kills = data;
                     handleEvents(player.Name, "kills");
                 });
                 // Get Deaths
-                $.getJSON(`https://cors-anywhere.herokuapp.com/https://gameinfo.albiononline.com/api/gameinfo/players/${player.ID}/deaths`, function(data){
+                $.getJSON(deathUrl, function(data){
                     playerEvents[player.Name].deaths = data;
                     handleEvents(player.Name, "deaths");
                 });
             }
 
+            function handleItemImage(item){
+                let div = $(`<span class="item"></span>`);
+                let image = $("<img></img>")
+                .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
+                .attr("width", "100px").attr("height", "100px");
+                let span = $(`<span class="item-count">${item.Count}</span>`);
+                div.append(image);
+                div.append(span);
+                return(div);
+            }
+
             function handleEvents(playerName, type){
                 for (let event of playerEvents[playerName][type]) {
-                    let killerequip = $(`<div id="${event.EventId}-killer-equipment"></div>`);
-                    let victimequip = $(`<div id="${event.EventId}-victim-equipment"></div>`);
-                    let inventory = $(`<div id="${event.EventId}-inventory"></div>`);                    
+                    let equipment = $(`
+                        <div id="${event.EventId}-equipment">
+                            <div class="row">
+                                <div class="col-md d-flex justify-content-center">
+                                    <h5>${event.Killer.Name}</h5>
+                                </div>
+                                <div class="col-md d-flex justify-content-center">
+                                    <h5>${event.Victim.Name}</h5>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div id="${event.EventId}-killer-equipment" class="col-md justify-content-center">
+                                </div>
+                                <div id="${event.EventId}-victim-equipment" class="col-md justify-content-center">
+                                </div>
+                            </div>
+                        </div>
+                    `);
+                    let inventory = $(`
+                        <div id="${event.EventId}-inventory">
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <h5>Inventory</h5>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div id="${event.EventId}-inventory" class="col-lg justify-content-center">
+                                </div>
+                            </div>
+                        </div>
+                    `);      
+                    let participants = $(`
+                        <div id="${event.EventId}-participants">
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <h5>Participants</h5>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                            </div>
+                        </div>
+                    `);
+
+                    let usefulPlayerActions = {};
+                    usefulPlayerActions.Damage = [];
+                    usefulPlayerActions.Heals = [];
+
+                    for (let player of event.Participants) {
+                        if(player.DamageDone > 0) {
+                            usefulPlayerActions.Damage.push(player);
+                        }
+                        if(player.SupportHealingDone > 0) {
+                            usefulPlayerActions.Heals.push(player);
+                        }
+                    }
+
+                    for (let player of usefulPlayerActions.Damage) {
+                        let div = $(`<div class="row"></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"><span>${player.Name} (<span style="color: red;">${Math.floor(parseFloat(player.AverageItemPower))}</span>)</span></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"><span style="color: red;">-${Math.floor(parseFloat(player.DamageDone))}</span></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"></div>`);
+                        participants.append(div);
+                    }
+
+                    for (let player of usefulPlayerActions.Heals) {
+                        let div = $(`<div class="row"></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"><span>${player.Name} (<span style="color: red;">${Math.floor(parseFloat(player.AverageItemPower))}</span>)</span></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"><span style="color: green;">+${Math.floor(parseFloat(player.SupportHealingDone))}</span></div>`);
+                        div.append(`<div class="col-sm d-flex justify-content-center"></div>`);
+                        participants.append(div);
+                    }
+
+                    let itemPowerDifference = parseFloat(event.Killer.AverageItemPower) - parseFloat(event.Victim.AverageItemPower)
+
+                    $(`#${playerName}-${type}`).append(`
+                        <li class="list-group-item">
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>${event.Killer.AllianceName ? `[${event.Killer.AllianceName}]` : ""} ${event.Killer.GuildName ? event.Killer.GuildName : ""}</span>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>${event.Victim.AllianceName ? `[${event.Victim.AllianceName}]` : ""} ${event.Victim.GuildName ? event.Victim.GuildName : ""}</span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>${event.Killer.Name} (<span style="color: red;">${Math.floor(parseFloat(event.Killer.AverageItemPower))}</span>)</span>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span style="color: ${Math.sign(itemPowerDifference) <= 0 ? "yellow" : "green"};">${Math.floor(itemPowerDifference)}</span>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>(<span style="color: red;">${Math.floor(parseFloat(event.Victim.AverageItemPower))}</span>) ${event.Victim.Name}</span>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span style="color: red;">VS</span>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <a href="https://albiononline.com/en/killboard/kill/${event.EventId}" target="_blank">
+                                        <u>Killboard</u>
+                                    </a>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <a data-toggle="collapse" href="#collapse-${event.EventId}" role="button" aria-expanded="false" aria-controls="collapse-${event.EventId}">
+                                        <u>Expand</u>
+                                    </a>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>Fame:<span style="color: red;"> ${event.TotalVictimKillFame.toLocaleString()}</span></span>
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                </div>
+                                <div class="col-sm d-flex justify-content-center">
+                                    <span>${moment(event.TimeStamp).format("DD-MM-YYYY HH:mm:ss")}</span>
+                                </div>
+                            </div>
+                        </li>
+                        <div class="collapse" id="collapse-${event.EventId}">
+                        </div>
+                    `);
+                    $(`#collapse-${event.EventId}`).append(equipment);
+                    $(`#collapse-${event.EventId}`).append(inventory);
+                    $(`#collapse-${event.EventId}`).append(participants);
+                    $(`#collapse-${event.EventId}`).append("<br />");
+
                     for (let item of event.Victim.Inventory) {
                         if(item != null){
-                            let div = $(`<div class="item"></div>`);
-                            let image = $("<img></img>")
-                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
-                            .attr("width", "100px").attr("height", "100px");
-                            let span = $(`<span class="item-count">${item.Count}</span>`);
-                            div.append(image);
-                            div.append(span);
+                            let div = handleItemImage(item);
                             inventory.append(div);
                         }                        
                     }
 
                     for (let item of Object.values(event.Killer.Equipment)) {
                         if(item != null){
-                            let div = $(`<div class="item"></div>`);
-                            let image = $("<img></img>")
-                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
-                            .attr("width", "100px").attr("height", "100px");
-                            let span = $(`<span class="item-count">${item.Count}</span>`);
-                            div.append(image);
-                            div.append(span);
-                            killerequip.append(div);
+                            let div = handleItemImage(item);
+                            $(`#${event.EventId}-killer-equipment`).append(div);
                         }                        
                     }
 
                     for (let item of Object.values(event.Victim.Equipment)) {
                         if(item != null){
-                            let div = $(`<div class="item"></div>`);
-                            let image = $("<img></img>")
-                            .attr("src", `https://render.albiononline.com/v1/item/${item.Type}.png?count=${item.Count}&quality=${item.Quality}`)
-                            .attr("width", "100px").attr("height", "100px");
-                            let span = $(`<span class="item-count">${item.Count}</span>`);
-                            div.append(image);
-                            div.append(span);
-                            victimequip.append(div);
+                            let div = handleItemImage(item);
+                            $(`#${event.EventId}-victim-equipment`).append(div);
                         }                        
                     }
-
-                    $(`#${playerName}-${type}`).append(`
-                        <li class="list-group-item">
-                            ${event.Killer.Name} (<span style="color: red;">${Math.floor(parseFloat(event.Killer.AverageItemPower))}</span>) vs ${event.Victim.Name} (<span style="color: red;">${Math.floor(parseFloat(event.Victim.AverageItemPower))}</span>)
-                            <a class="float-right" data-toggle="collapse" href="#collapse-${event.EventId}" role="button" aria-expanded="false" aria-controls="collapse-${event.EventId}">
-                                <u>Expand</u>
-                            </a>
-                            <br />
-                            <a href="https://albiononline.com/en/killboard/kill/${event.EventId}" target="_blank">
-                                <u>Killboard</u>
-                            </a>
-                            
-                            <br />
-                            <br />
-                            Fame: <span style="color: red;">${event.TotalVictimKillFame.toLocaleString()}</span>
-                            <span class="float-right">${moment(event.TimeStamp).format("DD-MM-YYYY HH:mm:ss")}</span>
-                        </li>
-                        <div class="collapse" id="collapse-${event.EventId}">
-                        </div>
-                    `);
-                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Killer Equipment <span style="color: red;">${Math.floor(parseFloat(event.Killer.AverageItemPower))}</span></h5></div>`));
-                    $(`#collapse-${event.EventId}`).append(killerequip);
-                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Victim Equipment <span style="color: red;">${Math.floor(parseFloat(event.Victim.AverageItemPower))}</span></h5></div>`));
-                    $(`#collapse-${event.EventId}`).append(victimequip);
-                    $(`#collapse-${event.EventId}`).append($(`<div class="card-body"><h5>Inventory</h5></div>`));
-                    $(`#collapse-${event.EventId}`).append(inventory);
                 }
             }
         </script>
@@ -149,7 +274,7 @@
             <div class="row">
                 <div class="col-lg-4">
                     <div class="card text-white bg-primary mb-3">
-                        <div class="card-header">Zeffuro</div>
+                        <div class="card-header"><h3>Zeffuro</h3></div>
                             <ul id="Zeffuro-kills" class="list-group list-group-flush">
                                 <div class="card-body">
                                     <h4 class="card-text">Kills</h4>
@@ -164,7 +289,7 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="card text-white bg-primary mb-3">
-                        <div class="card-header">Yaloshi</div>
+                        <div class="card-header"><h3>Yaloshi</h3></div>
                         <ul id="Yaloshi-kills" class="list-group list-group-flush">
                             <div class="card-body">
                                 <h4 class="card-text">Kills</h4>
@@ -179,7 +304,7 @@
                 </div>
                 <div class="col-lg-4">
                     <div class="card text-white bg-primary mb-3">
-                        <div class="card-header">Lunexz</div>
+                        <div class="card-header"><h3>Lunexz</h3></div>
                         <ul id="Lunexz-kills" class="list-group list-group-flush">
                             <div class="card-body">
                                 <h4 class="card-text">Kills</h4>
